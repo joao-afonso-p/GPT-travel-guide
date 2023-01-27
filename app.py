@@ -231,4 +231,4 @@ if st.session_state.count > 0:
 
       folium_static(map)
 
-streamlit_analytics.stop_tracking(unsafe_password="1234")
+streamlit_analytics.stop_tracking(unsafe_password=st.secrets["ANALYTICS_KEY"])
