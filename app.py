@@ -63,7 +63,7 @@ def plot_locations(locations, avg_coordinates, col_hex):
   if locations[0] == locations[-1]:
     same_first_last = True
   else:
-    same_first_last = True
+    same_first_last = False
 
   map = folium.Map(location=avg_coordinates, zoom_start=5)
   folium.TileLayer('cartodbpositron').add_to(map)
@@ -91,7 +91,7 @@ def plot_locations(locations, avg_coordinates, col_hex):
 
 streamlit_analytics.start_tracking()
 
-st.title("A.I. Travel Guide")
+st.title("GPT Travel Guide")
 st.write("The first version of a travel guide based on a Generative Pre-trained Transformer, the same technology behind chatGPT. For now, it is only configured to generate itinerarys for single countries.")
 
 if 'count' not in st.session_state:
@@ -104,7 +104,7 @@ country = st.selectbox("Country", COUNTRIES['country'].tolist(), index=COUNTRIES
 col1, col2, col3 = st.columns(3)
 first_city = col1.selectbox("First city", CITIES.loc[CITIES['country']==country]['city'].tolist(), disabled=st.session_state.disabled)
 last_city = col2.selectbox("Last city", CITIES.loc[CITIES['country']==country]['city'].tolist(), disabled=st.session_state.disabled)
-num_days = col3.number_input("Number of cities", value=5, format="%i", disabled=st.session_state.disabled)
+num_days = col3.number_input("Number of cities", value=5, format="%i", disabled=st.session_state.disabled, min_value=3)
 
 
 col1, col2, col3, _, = st.columns(4)
@@ -169,7 +169,7 @@ if st.session_state.count > 0:
       pass
 
     st.subheader(f"{num_days} cities to visit in {country}")
-    st.write("You can drag and drop the different locations to re-order and see it on the map")
+    st.write("If you are in a computer, you can drag and drop the different locations to re-order and see it on the map.")
 
 
     code = f"{country}_{first_city}_{last_city}_{num_days}"
