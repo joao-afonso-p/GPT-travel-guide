@@ -36,7 +36,7 @@ def show_country_info(country: str) -> None:
     with col1:
 
       try:
-        country_name = info[0]['name']['official']
+        country_name = country
         st.subheader(f"{country_name}")
       except:
         raise Exception("Do not print information")
