@@ -10,7 +10,7 @@ import streamlit_analytics
 import openai
 from st_draggable_list import DraggableList
 import requests
-from typing import Dict, List, Tuple, Object
+from typing import Dict, List, Tuple
 
 COUNTRIES = pd.read_csv('country_codes_updated.csv')
 CITIES = pd.read_csv('worldcities.csv')
@@ -163,7 +163,7 @@ def process_itinerary(text: str) -> Tuple(List[Dict], List[List[float]]):
 
   return locations, all_coord
 
-def plot_locations(locations: List[Dict], avg_coordinates: List[float]) -> Object:
+def plot_locations(locations: List[Dict], avg_coordinates: List[float]):
 
   """
   Method to plot the locations into a folium map.
