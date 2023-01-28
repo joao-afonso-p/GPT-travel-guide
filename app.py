@@ -10,15 +10,80 @@ import streamlit_analytics
 import openai
 from st_draggable_list import DraggableList
 import requests
+from typing import Dict, List, Tuple, Object
 
 COUNTRIES = pd.read_csv('country_codes_updated.csv')
 CITIES = pd.read_csv('worldcities.csv')
 
-def generate_itinerary(country, first_city, last_city, num_days):
+def show_country_info(country: str) -> None:
+
+  """
+  Method to get information about the target country and show it in the application.
+ 
+  Input:
+    country (str): name of the country
+  Output:
+    None
+  """
+
+  try:
+
+    res = requests.get(f"https://restcountries.com/v3.1/name/{country}?fullText=true")
+    info = res.json()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+      try:
+        country_name = info[0]['name']['official']
+        st.subheader(f"{country_name}")
+      except:
+        raise Exception("Do not print information")
+      
+      try:
+        country_capital = info[0]['capital'][0]
+        st.markdown(f"- **Capital**: {country_capital}")
+      except:
+        pass
+
+      try:
+        country_currencies = info[0]['currencies']
+        text = f"- **Currencies**:"
+        for key in country_currencies:
+          text += f"\n  - {country_currencies[key]['name']} ({country_currencies[key]['symbol']})"
+        st.markdown(text)
+      except:
+        pass
+
+    with col2:
+
+      try:
+        country_flag = info[0]['flags']['png']
+        st.image(country_flag)
+      except:
+        pass
+      
+  except:
+    pass
+
+def generate_itinerary(country: str, first_city: str, last_city: str, num_cities: int) -> str:
+
+  """
+  Method to send a request to the GPT model, to generate the itinerary.
+
+  Input:
+    country (str): name of the country
+    first_city (str): name of the first city to visit (arrival)
+    last_city (str): name of the last city to visit (departure)
+    num_cities (int): number of cities to visit
+  Output:
+    text (str): model response, with the format [city1, city2, ...]
+  """
 
   openai.api_key = st.secrets["OPENAI_KEY"]
 
-  ask = f"Do a {num_days} day travel itinerary through {country}, starting in {first_city} and ending in {last_city}. Return with this format: [day 1 city, day 2 city, ...]"
+  ask = f"Do a {num_cities} day travel itinerary through {country}, starting in {first_city} and ending in {last_city}. Return with this format: [city1, city2, ...]"
   response = openai.Completion.create(
     model="text-davinci-003",
     prompt=ask,
@@ -31,10 +96,20 @@ def generate_itinerary(country, first_city, last_city, num_days):
     )
 
   text = response['choices'][0]['text']
-  print(text)
+
   return text
 
-def get_coordinates(country, city):
+def get_coordinates(country: str, city: str) -> List[float]:
+
+  """  
+  Method to get the geographical coordinates of a city in a country.
+  
+  Input:
+    country (str): name of the country
+    city (str): name of the city
+  Output:
+    coordinates (list): list with the two coordinates of the city
+  """
 
   try:
     code = COUNTRIES.loc[COUNTRIES['country']==country]['code'].item()
@@ -58,7 +133,49 @@ def get_coordinates(country, city):
   coordinates = {k: json_data['data'][0][k] for k in ('latitude', 'longitude')}
   return list(coordinates.values())
 
-def plot_locations(locations, avg_coordinates, col_hex):
+def process_itinerary(text: str) -> Tuple(List[Dict], List[List[float]]):
+
+  """
+  Method to process the response of the GPT model into locations of the itinerary.
+
+  Input:
+    text (str): string with the response of the GPT model
+  Output:
+    locations (list): list of dictionaries with the format {'name': <city name>, 'coordinates': <coordinates>}
+    all_coord (list): list with the coordinates of all cities
+  """
+
+  text = text.replace("[", "").replace("]", "").split(",")
+  city_list = [t.replace("'", "").strip() for t in text]
+
+  all_coord = []
+  locations = []
+  for city in city_list:
+    try:
+      coord = get_coordinates(country, city)
+    except Exception as error:
+      print(error)
+      continue
+    all_coord.append(coord)
+    loc = {'name': city, 'coordinates': coord}
+    print(f"   > {city} ({coord})")
+    locations.append(loc)
+
+  return locations, all_coord
+
+def plot_locations(locations: List[Dict], avg_coordinates: List[float]) -> Object:
+
+  """
+  Method to plot the locations into a folium map.
+
+  Input:
+    locations (list): list of dictionaries with the format {'name': <city name>, 'coordinates': <coordinates>}
+    avg_coordinates (list): list with the average coordinates of all locations
+  Output:
+    map (folium map object): folium map
+  """
+
+  col_hex = ["#FF4B4B"]*len(locations)
 
   if locations[0] == locations[-1]:
     same_first_last = True
@@ -88,6 +205,8 @@ def plot_locations(locations, avg_coordinates, col_hex):
     ).add_to(map)
 
   return map
+
+# START OF THE APP -----------------------------------------------------------------------------------------------------------
 
 streamlit_analytics.start_tracking()
 
@@ -127,94 +246,45 @@ if st.session_state.count > 0:
 
     st.session_state.disabled = True
 
-    try:
-
-      res = requests.get(f"https://restcountries.com/v3.1/name/{country}?fullText=true")
-      info = res.json()
-
-      col1, col2 = st.columns(2)
-
-      with col1:
-
-        try:
-          country_name = info[0]['name']['official']
-          st.subheader(f"{country_name}")
-        except:
-          raise Exception("Do not print information")
-        
-        try:
-          country_capital = info[0]['capital'][0]
-          st.markdown(f"- **Capital**: {country_capital}")
-        except:
-          pass
-
-        try:
-          country_currencies = info[0]['currencies']
-          text = f"- **Currencies**:"
-          for key in country_currencies:
-            text += f"\n  - {country_currencies[key]['name']} ({country_currencies[key]['symbol']})"
-          st.markdown(text)
-        except:
-          pass
-
-      with col2:
-
-        try:
-          country_flag = info[0]['flags']['png']
-          st.image(country_flag)
-        except:
-          pass
-        
-    except:
-      pass
-
-    st.subheader(f"{num_days} cities to visit in {country}")
-    st.write("If you are in a computer, you can drag and drop the different locations to re-order and see it on the map.")
-
+    show_country_info()
 
     code = f"{country}_{first_city}_{last_city}_{num_days}"
 
     if os.path.exists(f"{code}.csv"):
 
+      print("Found existing itinerary!")
+
       locations = pd.read_csv(f"{code}.csv")
       locations = locations.to_dict('records')
+
       locations = [{"name": d["name"], "coordinates": json.loads(d["coordinates"])} for d in locations]
       all_coord = [d['coordinates'] for d in locations]
+
       locations_df = pd.DataFrame(locations)
 
     else:
 
-      print("Will generate new itinerary:")
+      print("Will generate new itinerary!")
+
       text = generate_itinerary(country, first_city, last_city, num_days)
       print(text)
 
-      text = text.replace("[", "").replace("]", "").split(",")
-      city_list = [t.replace("'", "").strip() for t in text]
-
-      print(city_list)
-
-      all_coord = []
-      locations = []
-      for city in city_list:
-        try:
-          coord = get_coordinates(country, city)
-        except Exception as error:
-          print(error)
-          continue
-        all_coord.append(coord)
-        loc = {'name': city, 'coordinates': coord}
-        print(f"   > {city} ({coord})")
-        locations.append(loc)
-
+      locations, all_coord = process_itinerary(text)
       locations_df = pd.DataFrame(locations)
       if len(locations_df) > 0:
         locations_df.to_csv(f"{code}.csv", index=False)
 
     if len(locations) == 0 or len(locations_df) == 0:
+   
       st.write("")
       st.write("Sorry, it was not possible to generate the itinerary...")
       st.write("You can always click clear and try another!")
+   
     else:
+
+      st.subheader(f"{num_days} cities to visit in {country}")
+      st.write("If you are in a computer, you can drag and drop the different locations to re-order and see on the map.")
+
       slist = DraggableList(locations, key="name")
 
       locations_df['longitude'] = locations_df['coordinates'].apply(lambda x: x[1])
@@ -222,12 +292,10 @@ if st.session_state.count > 0:
     
       avg_coordinates = list(map(lambda x: sum(x)/len(all_coord), zip(*all_coord)))
 
-      col_hex = ["#FF4B4B"]*len(locations)
-
       try:
-        map = plot_locations(slist, avg_coordinates, col_hex)
+        map = plot_locations(slist, avg_coordinates)
       except:
-        map = plot_locations(locations, avg_coordinates, col_hex)
+        map = plot_locations(locations, avg_coordinates)
 
       folium_static(map)
 
