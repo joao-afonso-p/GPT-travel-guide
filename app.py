@@ -133,7 +133,7 @@ def get_coordinates(country: str, city: str) -> List[float]:
   coordinates = {k: json_data['data'][0][k] for k in ('latitude', 'longitude')}
   return list(coordinates.values())
 
-def process_itinerary(text: str) -> Tuple(List[Dict], List[List[float]]):
+def process_itinerary(text: str) -> Tuple[List[Dict], List[List[float]]]:
 
   """
   Method to process the response of the GPT model into locations of the itinerary.
