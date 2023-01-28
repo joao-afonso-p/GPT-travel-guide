@@ -246,7 +246,7 @@ if st.session_state.count > 0:
 
     st.session_state.disabled = True
 
-    show_country_info()
+    show_country_info(country)
 
     code = f"{country}_{first_city}_{last_city}_{num_days}"
 
